@@ -6,6 +6,7 @@ import dotenv from 'dotenv'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import verifyToken from './middlewares/verifyToken'
+import verifyAccess from './middlewares/verifyAccess'
 
 const port = 3000
 
@@ -23,8 +24,10 @@ app.use(
 void db.connect()
 
 app.use(express.json())
-app.use(morgan('dev'))
+app.use(morgan('common'))
 app.use(cookieParser())
+
+app.use(verifyAccess)
 
 app.get('/', (_req, res) => {
   res.json({ message: 'Hello World' })
