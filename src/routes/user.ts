@@ -33,4 +33,14 @@ router.post('/login', async (req, res) => {
     .json(data)
 })
 
+router.get('/me', async (req, res) => {
+  const token = req.cookies.access_token
+  const result = await db.me(token)
+  if (isStatusMessage(result)) {
+    res.status(404).json(result)
+    return
+  }
+  res.json(result)
+})
+
 export default router

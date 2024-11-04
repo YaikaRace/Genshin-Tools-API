@@ -7,10 +7,11 @@ import {
   StatusMessage,
   UserInfo,
   UserInfoNoSensitive,
+  userInfoNoSensitiveSchema,
   UserSession
 } from '../types'
 import User from '../models/User'
-import jwt from 'jsonwebtoken'
+import jwt, { JwtPayload } from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import isStatusMessage from '../utils/isStatusMessage'
 
@@ -59,7 +60,8 @@ export const registerUser = async (
     }
     const newUser = new User(validatedUser.data)
     const userInfo = await newUser.save()
-    return { ...userInfo.toObject() }
+    const { password, ...newUserInfo } = userInfo.toObject()
+    return { ...newUserInfo }
   } catch (error) {
     return {
       success: false,
@@ -84,6 +86,46 @@ export const findUser = async (
   return foundUser.toObject()
 }
 
+export const me = async (
+  token: string
+): Promise<UserInfoNoSensitive | StatusMessage> => {
+  const secret = process.env.JWT_SECRET ?? ''
+  let data
+  try {
+    data = jwt.verify(token, secret) as JwtPayload
+  } catch {
+    return {
+      success: false,
+      message: 'Session has expired'
+    }
+  }
+  const { _id } = data
+  const user = await findByID(_id)
+  return user
+}
+
+export const findByID = async (
+  id: string
+): Promise<UserInfoNoSensitive | StatusMessage> => {
+  const found = await User.findById(id)
+  if (found === undefined || found === null) {
+    return {
+      success: false,
+      message: 'User not found'
+    }
+  }
+  const obj = found.toJSON()
+  obj._id = obj._id.toString()
+  const userInfo = userInfoNoSensitiveSchema.safeParse(obj)
+  if (userInfo.data === undefined) {
+    return {
+      success: false,
+      message: 'User not found'
+    }
+  }
+  return userInfo.data
+}
+
 const createSession = async (
   user: LoginUser
 ): Promise<UserSession | StatusMessage> => {
@@ -94,7 +136,7 @@ const createSession = async (
   }
   const { _id, username } = foundUser
   const token = jwt.sign({ _id, username }, secret as string, {
-    expiresIn: '30s'
+    expiresIn: '1h'
   })
   const userSession: UserSession = { _id, username, token }
   return userSession
