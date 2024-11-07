@@ -33,6 +33,14 @@ router.post('/login', async (req, res) => {
     .json(data)
 })
 
+router.get('/logout', async (_req, res) => {
+  res.clearCookie('access_token')
+  res.json({
+    success: true,
+    message: 'Logout Successfuly'
+  })
+})
+
 router.get('/me', async (req, res) => {
   const token = req.cookies.access_token
   const result = await db.me(token)
