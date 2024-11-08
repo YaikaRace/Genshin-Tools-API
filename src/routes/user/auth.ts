@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import * as db from '../services/db'
-import isStatusMessage from '../utils/isStatusMessage'
+import * as db from '../../services/db'
+import isStatusMessage from '../../utils/isStatusMessage'
 
 const router = Router()
 
@@ -28,27 +28,20 @@ router.post('/login', async (req, res) => {
     .cookie('access_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : true
     })
     .json(data)
 })
 
-router.get('/logout', async (_req, res) => {
-  res.clearCookie('access_token')
+router.post('/logout', async (_req, res) => {
+  res.clearCookie('access_token', {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : true
+  })
   res.json({
     success: true,
     message: 'Logout Successfuly'
   })
-})
-
-router.get('/me', async (req, res) => {
-  const token = req.cookies.access_token
-  const result = await db.me(token)
-  if (isStatusMessage(result)) {
-    res.status(404).json(result)
-    return
-  }
-  res.json(result)
 })
 
 export default router

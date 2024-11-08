@@ -5,7 +5,6 @@ import userRouter from './routes/user'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import verifyToken from './middlewares/verifyToken'
 import verifyAccess from './middlewares/verifyAccess'
 
 const port = 3000
@@ -20,7 +19,7 @@ app.use(
       'http://localhost:8080',
       process.env.ORIGIN !== undefined ? process.env.ORIGIN : ''
     ],
-    methods: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true
   })
 )
@@ -38,9 +37,7 @@ app.get('/', (_req, res) => {
   console.log(_req.headers.origin)
 })
 
-app.use('/user/auth', userRouter)
-
-app.use(verifyToken)
+app.use('/user', userRouter)
 
 app.use((_req, res) => {
   res.status(404).json({

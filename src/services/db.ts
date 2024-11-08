@@ -5,13 +5,15 @@ import {
   NewUser,
   newUserSchema,
   StatusMessage,
+  UpdateUser,
   UserInfo,
   UserInfoNoSensitive,
   userInfoNoSensitiveSchema,
+  userInfoSchema,
   UserSession
 } from '../types'
 import User from '../models/User'
-import jwt, { JwtPayload } from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import isStatusMessage from '../utils/isStatusMessage'
 
@@ -28,12 +30,22 @@ export const connect = async (): Promise<void> => {
   }
 }
 
+export const disconnect = async (): Promise<void> => {
+  await mongoose.disconnect()
+}
+
 export const loginUser = async (
   user: LoginUser
 ): Promise<UserSession | StatusMessage> => {
   try {
     const validatedUser = loginUserSchema.safeParse(user).data
-    const userSession = await createSession(validatedUser as LoginUser)
+    if (validatedUser === undefined) {
+      return {
+        success: false,
+        message: 'Username or Password is invalid'
+      }
+    }
+    const userSession = await createSession(validatedUser)
     return userSession
   } catch (error) {
     return {
@@ -47,17 +59,22 @@ export const registerUser = async (
   user: NewUser
 ): Promise<UserInfoNoSensitive | StatusMessage> => {
   try {
-    const rounds =
-      process.env.SALT_ROUNDS !== undefined ? process.env.SALT_ROUNDS : 10
-    const salt = await bcrypt.genSalt(+rounds)
-    user.password = await bcrypt.hash(user.password, salt)
+    const found = await findUser(user)
+    if (!isStatusMessage(found)) {
+      return {
+        success: false,
+        message: 'The Username is already taken'
+      }
+    }
+    user.password = await hashPassword(user.password)
     const validatedUser = newUserSchema.safeParse(user)
     if (!validatedUser.success) {
       return {
         success: false,
-        message: validatedUser.error as any
+        message: validatedUser.error.issues[0].message
       }
     }
+    // TODO: Send Mail
     const newUser = new User(validatedUser.data)
     const userInfo = await newUser.save()
     const { password, ...newUserInfo } = userInfo.toObject()
@@ -65,8 +82,7 @@ export const registerUser = async (
   } catch (error) {
     return {
       success: false,
-      message:
-        'Registration error, make sure to include the following fields: username, email, password'
+      message: 'Registration error, some fields are invalid'
     }
   }
 }
@@ -75,32 +91,53 @@ export const findUser = async (
   user: LoginUser
 ): Promise<UserInfo | StatusMessage> => {
   const validatedUser = loginUserSchema.safeParse(user).data
-  const { username } = validatedUser as LoginUser
+  if (validatedUser === undefined) {
+    return {
+      success: false,
+      message: "This user does't exist"
+    }
+  }
+  const { username } = validatedUser
   const foundUser = await User.findOne({ username })
   if (foundUser === null) {
     return {
       success: false,
-      message: 'Este usuario no existe'
+      message: "This user does't exist"
     }
   }
   return foundUser.toObject()
 }
 
-export const me = async (
-  token: string
+export const updateUser = async (
+  id: string,
+  payload: UpdateUser
 ): Promise<UserInfoNoSensitive | StatusMessage> => {
-  const secret = process.env.JWT_SECRET ?? ''
-  let data
-  try {
-    data = jwt.verify(token, secret) as JwtPayload
-  } catch {
+  const parsed = userInfoSchema.partial().safeParse(payload)
+  if (!parsed.success) {
     return {
       success: false,
-      message: 'Session has expired'
+      message: parsed.error.issues[0].message
     }
   }
-  const { _id } = data
-  const user = await findByID(_id)
+  if (parsed.data.password !== undefined) {
+    parsed.data.password = await hashPassword(parsed.data.password)
+  }
+  const found = await User.findByIdAndUpdate(id, parsed.data, { new: true })
+  if (found === null) {
+    return {
+      success: false,
+      message: 'User not found'
+    }
+  }
+  const updated = (await found.save()).toObject()
+  updated._id = updated._id.toString()
+  return userInfoNoSensitiveSchema.parse(updated)
+}
+
+export const me = async (
+  id: string
+): Promise<UserInfoNoSensitive | StatusMessage> => {
+  const user = await findByID(id)
   return user
 }
 
@@ -117,13 +154,20 @@ export const findByID = async (
   const obj = found.toJSON()
   obj._id = obj._id.toString()
   const userInfo = userInfoNoSensitiveSchema.safeParse(obj)
-  if (userInfo.data === undefined) {
+  if (!userInfo.success) {
     return {
       success: false,
-      message: 'User not found'
+      message: userInfo.error.issues[0].message
     }
   }
   return userInfo.data
+}
+
+const hashPassword = async (password: string): Promise<string> => {
+  const rounds =
+    process.env.SALT_ROUNDS !== undefined ? process.env.SALT_ROUNDS : 10
+  const salt = await bcrypt.genSalt(+rounds)
+  return await bcrypt.hash(password, salt)
 }
 
 const createSession = async (
@@ -134,9 +178,18 @@ const createSession = async (
   if (isStatusMessage(foundUser)) {
     return foundUser
   }
+  const { password } = foundUser
+  const result = await bcrypt.compare(user.password, password)
+  if (!result) {
+    return {
+      success: false,
+      message: 'Password is invalid'
+    }
+  }
+  foundUser._id = foundUser._id?.toString() ?? foundUser._id
   const { _id, username } = foundUser
   const token = jwt.sign({ _id, username }, secret as string, {
-    expiresIn: '1h'
+    expiresIn: '30d'
   })
   const userSession: UserSession = { _id, username, token }
   return userSession
