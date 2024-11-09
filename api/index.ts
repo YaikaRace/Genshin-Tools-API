@@ -1,12 +1,10 @@
 import express from 'express'
 import morgan from 'morgan'
-import userRouter from './routes/user'
+import userRouter from '../src/routes/user'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import verifyAccess from './middlewares/verifyAccess'
-
-const port = 3000
+import verifyAccess from '../src/middlewares/verifyAccess'
 
 dotenv.config()
 
@@ -23,8 +21,8 @@ app.use(
   })
 )
 
-app.use(morgan('common'))
 app.use(cookieParser())
+app.use(morgan('common'))
 app.use(express.json())
 
 app.use(verifyAccess)
@@ -43,5 +41,4 @@ app.use((_req, res) => {
   })
 })
 
-app.listen(port)
-console.log(`Listening on port ${port}`)
+export = app

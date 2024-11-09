@@ -7,3 +7,10 @@ declare module 'express-serve-static-core' {
     }
   }
 }
+declare module 'express' {
+  interface Request {
+    session?: {
+      user: Partial<UserSession>
+    }
+  }
+}

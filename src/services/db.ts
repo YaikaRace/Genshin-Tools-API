@@ -75,8 +75,10 @@ export const registerUser = async (
       }
     }
     // TODO: Send Mail
+    await connect()
     const newUser = new User(validatedUser.data)
     const userInfo = await newUser.save()
+    await disconnect()
     const { password, ...newUserInfo } = userInfo.toObject()
     return { ...newUserInfo }
   } catch (error) {
@@ -98,7 +100,9 @@ export const findUser = async (
     }
   }
   const { username } = validatedUser
+  await connect()
   const foundUser = await User.findOne({ username })
+  await disconnect()
   if (foundUser === null) {
     return {
       success: false,
@@ -112,7 +116,10 @@ export const updateUser = async (
   id: string,
   payload: UpdateUser
 ): Promise<UserInfoNoSensitive | StatusMessage> => {
-  const parsed = userInfoSchema.partial().safeParse(payload)
+  const parsed = userInfoSchema
+    .omit({ _id: true, role: true })
+    .partial()
+    .safeParse(payload)
   if (!parsed.success) {
     return {
       success: false,
@@ -122,6 +129,7 @@ export const updateUser = async (
   if (parsed.data.password !== undefined) {
     parsed.data.password = await hashPassword(parsed.data.password)
   }
+  await connect()
   const found = await User.findByIdAndUpdate(id, parsed.data, { new: true })
   if (found === null) {
     return {
@@ -131,6 +139,7 @@ export const updateUser = async (
   }
   const updated = (await found.save()).toObject()
   updated._id = updated._id.toString()
+  await disconnect()
   return userInfoNoSensitiveSchema.parse(updated)
 }
 
@@ -144,7 +153,9 @@ export const me = async (
 export const findByID = async (
   id: string
 ): Promise<UserInfoNoSensitive | StatusMessage> => {
+  await connect()
   const found = await User.findById(id)
+  await disconnect()
   if (found === undefined || found === null) {
     return {
       success: false,
