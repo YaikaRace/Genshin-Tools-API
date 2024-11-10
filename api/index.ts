@@ -28,7 +28,10 @@ app.use(express.json())
 app.use(verifyAccess)
 
 app.get('/', (_req, res) => {
-  res.json({ message: 'Hello World' })
+  res.json({
+    message:
+      'Genshin Tools API HomePage to start using the API login at /login route to get your token'
+  })
   console.log(_req.headers.origin)
 })
 
