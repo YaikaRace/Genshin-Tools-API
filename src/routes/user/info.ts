@@ -2,10 +2,11 @@ import { Router } from 'express'
 import * as db from '../../services/db'
 import isStatusMessage from '../../utils/isStatusMessage'
 import verifyToken from '../../middlewares/verifyToken'
+import { CustomRequest } from '../../types'
 
 const router = Router()
 
-router.get('/me', verifyToken, async (req, res) => {
+router.get('/me', verifyToken, async (req: CustomRequest, res) => {
   if (req.session?.user?._id === undefined) return
   const result = await db.me(req.session?.user?._id)
   if (isStatusMessage(result)) {
@@ -15,7 +16,7 @@ router.get('/me', verifyToken, async (req, res) => {
   res.json(result)
 })
 
-router.patch('/me', verifyToken, async (req, res) => {
+router.patch('/me', verifyToken, async (req: CustomRequest, res) => {
   if (req.session?.user?._id === undefined) return
   const { username, email, password } = req.body
   const result = await db.updateUser(req.session?.user?._id, {

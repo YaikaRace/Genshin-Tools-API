@@ -1,3 +1,4 @@
+import { Request } from 'express'
 import { z } from 'zod'
 
 export const userInfoSchema = z.object({
@@ -35,4 +36,10 @@ export interface StatusMessage {
 
 export interface UserSession extends Pick<UserInfo, '_id' | 'username'> {
   token: string
+}
+
+export type CustomRequest = Request & {
+  session?: {
+    user: Partial<UserSession>
+  }
 }

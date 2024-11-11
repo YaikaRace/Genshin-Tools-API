@@ -1,7 +1,12 @@
-import { NextFunction, Request, Response } from 'express'
+import { NextFunction, Response } from 'express'
 import jwt, { JwtPayload } from 'jsonwebtoken'
+import { CustomRequest } from '../types'
 
-export default (req: Request, res: Response, next: NextFunction): void => {
+export default (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+): void => {
   const secret = process.env.JWT_SECRET as string
   const token = req.cookies.access_token
   let data = null
