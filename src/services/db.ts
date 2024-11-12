@@ -66,7 +66,6 @@ export const registerUser = async (
         message: 'The Username is already taken'
       }
     }
-    user.password = await hashPassword(user.password)
     const validatedUser = newUserSchema.safeParse(user)
     if (!validatedUser.success) {
       return {
@@ -74,9 +73,11 @@ export const registerUser = async (
         message: validatedUser.error.issues[0].message
       }
     }
+    const userData = validatedUser.data
+    userData.password = await hashPassword(userData.password)
     // TODO: Send Mail
     await connect()
-    const newUser = new User(validatedUser.data)
+    const newUser = new User(userData)
     const userInfo = await newUser.save()
     await disconnect()
     const { password, ...newUserInfo } = userInfo.toObject()
