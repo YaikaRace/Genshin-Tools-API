@@ -2,6 +2,7 @@ import path from 'path'
 import express from 'express'
 import morgan from 'morgan'
 import userRouter from '../src/routes/user'
+import tierlistRouter from '../src/routes/tierlist'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
@@ -40,6 +41,8 @@ app.get('/', (_req, res) => {
 app.use(verifyAccess)
 
 app.use('/user', userRouter)
+
+app.use('/tierlist', tierlistRouter)
 
 app.use((_req, res) => {
   res.status(404).json({

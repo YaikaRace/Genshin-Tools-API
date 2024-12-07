@@ -22,6 +22,30 @@ export const loginUserSchema = userInfoSchema.pick({
 })
 export const updateUserSchema = newUserSchema.partial()
 
+export const weaponSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  weaponType: z.string()
+})
+export const characterSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  weapon: z.string(),
+  type: z.enum(['character', 'weapon']),
+  nested: z.array(weaponSchema)
+})
+export const tierSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  color: z.string().optional(),
+  nested: z.array(characterSchema).or(z.array(weaponSchema)).optional(),
+  modal: z.boolean().optional()
+})
+export const tierlistSchema = z.object({
+  tiers: z.array(tierSchema)
+})
+
 export interface UserInfo extends z.infer<typeof userInfoSchema> {}
 
 export type UserInfoNoSensitive = z.infer<typeof userInfoNoSensitiveSchema>
@@ -29,6 +53,11 @@ export type NewUser = z.infer<typeof newUserSchema>
 export type LoginUser = z.infer<typeof loginUserSchema>
 export type UpdateUser = z.infer<typeof updateUserSchema>
 
+export type Tier = z.infer<typeof tierSchema>
+export type Tierlist = z.infer<typeof tierlistSchema>
+export type SavedTierlist = Tierlist & {
+  _id: string
+}
 export interface StatusMessage {
   success: boolean
   message: string

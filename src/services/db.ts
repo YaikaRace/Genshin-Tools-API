@@ -4,7 +4,10 @@ import {
   loginUserSchema,
   NewUser,
   newUserSchema,
+  SavedTierlist,
   StatusMessage,
+  Tierlist,
+  tierlistSchema,
   UpdateUser,
   UserInfo,
   UserInfoNoSensitive,
@@ -16,6 +19,7 @@ import User from '../models/User'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import isStatusMessage from '../utils/isStatusMessage'
+import TierlistModel from '../models/TierlistModel'
 
 export const connect = async (): Promise<void> => {
   try {
@@ -205,4 +209,46 @@ const createSession = async (
   })
   const userSession: UserSession = { _id, username, token }
   return userSession
+}
+
+export const saveTierlist = async (
+  tierlist: Tierlist,
+  userId: string
+): Promise<StatusMessage | SavedTierlist> => {
+  const parsed = tierlistSchema.safeParse(tierlist)
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Tierlist is invalid'
+    }
+  }
+  await connect()
+  const result = new TierlistModel({ ...parsed.data, userId })
+  const saved = await result.save()
+  await disconnect()
+  const obj = saved.toObject()
+  const _id = obj._id.toString()
+  return { ...obj, _id }
+}
+
+export const getUserTierlists = async (userId: string): Promise<Tierlist[]> => {
+  await connect()
+  const result = await TierlistModel.find({ userId })
+  await disconnect()
+  return result
+}
+
+export const getTierlistById = async (
+  id: string
+): Promise<StatusMessage | Tierlist> => {
+  await connect()
+  const result = await TierlistModel.findById(id)
+  await disconnect()
+  if (result === null) {
+    return {
+      success: false,
+      message: "Tierlist doesn't exist"
+    }
+  }
+  return result.toObject()
 }
